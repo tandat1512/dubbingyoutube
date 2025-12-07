@@ -4,3 +4,5 @@ edge-tts
 requests
 youtube-transcript-api
 deep-translator
+google-generativeai
+python-dotenv

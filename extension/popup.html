@@ -35,9 +35,32 @@
         <!-- Main Card -->
         <main>
             <div class="card glass">
-                <div class="info-row">
-                    <span class="label">Target Voice</span>
-                    <span class="value">Hoai My (AI)</span>
+                <!-- Voice Selection -->
+                <div class="setting-item">
+                    <label>🎤 Giọng đọc</label>
+                    <select id="voice-select" class="select-input">
+                        <option value="female">Hoài My (Nữ)</option>
+                        <option value="male">Nam Minh (Nam)</option>
+                    </select>
+                </div>
+
+                <!-- Translation Source -->
+                <div class="setting-item">
+                    <label>🌐 Nguồn dịch</label>
+                    <select id="translate-select" class="select-input">
+                        <option value="youtube">YouTube (Gốc)</option>
+                        <option value="gemini">Gemini AI</option>
+                        <option value="deep">Deep Translate ✨</option>
+                    </select>
+                </div>
+
+                <!-- Mute Toggle -->
+                <div class="setting-item toggle-row">
+                    <label>🔇 Tắt tiếng video gốc</label>
+                    <label class="switch">
+                        <input type="checkbox" id="mute-toggle" checked>
+                        <span class="slider-toggle round"></span>
+                    </label>
                 </div>
 
                 <div class="control-area">
@@ -45,20 +68,20 @@
                         <span class="btn-text">START DUBBING</span>
                         <div class="btn-shine"></div>
                     </button>
-                    <p class="hint-text">Auto-syncs with video</p>
+                    <p class="hint-text">Deep Translate = Dịch sâu, tự nhiên hơn</p>
                 </div>
             </div>
 
             <div class="settings-card glass">
                 <div class="setting-item">
-                    <label>Volume Boost</label>
-                    <input type="range" min="0" max="200" value="100" class="slider">
+                    <label>🔊 Volume Boost</label>
+                    <input type="range" min="0" max="200" value="100" class="slider" id="volume-slider">
                 </div>
             </div>
         </main>
 
         <footer>
-            <p>Powered by Edge-TTS & Deep Translator</p>
+            <p>Powered by Edge-TTS & Gemini AI</p>
         </footer>
     </div>
     <script src="popup.js"></script>

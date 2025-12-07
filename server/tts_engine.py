@@ -9,6 +9,7 @@ import edge_tts
 class EdgeTTSEngine:
     def __init__(self, voice: str = "vi-VN-HoaiMyNeural"):
         self.voice = voice
+        print(f"🎤 TTS Engine initialized with voice: {self.voice}")
 
     async def generate_audio(self, text: str, start_time: float, end_time: float) -> bytes:
         """

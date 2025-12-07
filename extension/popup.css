@@ -10,7 +10,7 @@
 
 body {
     width: 350px;
-    height: 480px;
+    min-height: 420px;
     margin: 0;
     font-family: 'Outfit', sans-serif;
     background: var(--bg-dark);
@@ -33,7 +33,7 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
 .logo-area {
@@ -88,15 +88,15 @@ h1 {
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
 }
 
 .info-row {
     display: flex;
     justify-content: space-between;
     font-size: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .label {
@@ -106,6 +106,94 @@ h1 {
 .value {
     font-weight: 600;
     color: #fff;
+}
+
+/* Setting Items */
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 13px;
+}
+
+.setting-item label {
+    color: var(--text-muted);
+}
+
+.toggle-row {
+    padding: 8px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 8px;
+}
+
+/* Select Input */
+.select-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    outline: none;
+}
+
+.select-input:focus {
+    border-color: var(--primary);
+}
+
+/* Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider-toggle {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #444;
+    transition: .3s;
+}
+
+.slider-toggle:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+}
+
+input:checked+.slider-toggle {
+    background: linear-gradient(90deg, #FF2D55, #FF3B30);
+}
+
+input:checked+.slider-toggle:before {
+    transform: translateX(20px);
+}
+
+.slider-toggle.round {
+    border-radius: 24px;
+}
+
+.slider-toggle.round:before {
+    border-radius: 50%;
 }
 
 /* Glowing Button */
@@ -124,6 +212,7 @@ h1 {
     overflow: hidden;
     transition: transform 0.1s, box-shadow 0.2s;
     box-shadow: 0 5px 20px rgba(255, 45, 85, 0.3);
+    margin-top: 12px;
 }
 
 .glow-button:active {
@@ -157,6 +246,10 @@ h1 {
     margin-bottom: 0;
 }
 
+.control-area {
+    margin-top: 8px;
+}
+
 /* Slider */
 .slider {
     -webkit-appearance: none;
@@ -187,4 +280,5 @@ footer {
     text-align: center;
     font-size: 9px;
     color: #444;
+    margin-top: 12px;
 }

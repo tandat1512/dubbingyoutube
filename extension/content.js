@@ -1,16 +1,24 @@
 class DubbingManager {
     constructor() {
-        this.audioQueue = []; // Array of {id, blobUrl, startTime, endTime}
+        this.audioQueue = [];
         this.isPlaying = false;
         this.video = null;
         this.subtitles = [];
         this.isBuffering = false;
-        this.currentAudioPlayer = null; // HTMLAudioElement
+        this.currentAudioPlayer = null;
         this.processedIds = new Set();
         this.SERVER_URL_BASE = "http://localhost:8000";
-        this.BUFFER_THRESHOLD_SEC = 30; // 30 seconds for initial batch
-        this.MIN_BUFFER_SEC = 15; // 15 seconds safe buffer
+        this.BUFFER_THRESHOLD_SEC = 30;
+        this.MIN_BUFFER_SEC = 15;
         this.nextFetchIndex = 0;
+
+        // User settings
+        this.selectedVoice = "female";
+        this.translateSource = "youtube"; // youtube, google, gemini
+        this.muteOriginal = true;
+        this.volume = 1.0;
+        this.originalVideoVolume = 1.0;
+        this.isDubbing = false;
 
         this.init();
     }
@@ -26,6 +34,7 @@ class DubbingManager {
             if (v) {
                 clearInterval(check);
                 this.video = v;
+                this.originalVideoVolume = this.video.volume;
                 this.setupListeners();
                 console.log("Video found");
             }
@@ -35,7 +44,26 @@ class DubbingManager {
     setupListeners() {
         chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             if (request.action === "start_dubbing") {
+                // Apply settings from popup
+                this.selectedVoice = request.voice || "female";
+                this.translateSource = request.translateSource || "youtube";
+                this.muteOriginal = request.muteOriginal !== false;
+                this.volume = request.volume || 1.0;
+                console.log(`Settings: voice=${this.selectedVoice}, translate=${this.translateSource}, mute=${this.muteOriginal}`);
                 this.startProcess();
+            }
+            if (request.action === "update_volume") {
+                this.volume = request.volume;
+                if (this.currentAudioPlayer) {
+                    this.currentAudioPlayer.volume = Math.min(this.volume, 1.0);
+                }
+            }
+            if (request.action === "toggle_mute") {
+                this.muteOriginal = request.mute;
+                if (this.video && this.isDubbing) {
+                    this.video.muted = this.muteOriginal;
+                    console.log(`Video muted: ${this.video.muted}`);
+                }
             }
         });
 
@@ -54,21 +82,20 @@ class DubbingManager {
             position: absolute;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             color: white;
-            padding: 8px 12px;
+            padding: 10px 14px;
             border-radius: 8px;
             font-family: Roboto, Arial, sans-serif;
-            font-size: 14px;
+            font-size: 13px;
             z-index: 9999;
             backdrop-filter: blur(5px);
             border: 1px solid rgba(255,255,255,0.2);
-            display: none; /* Hidden by default */
+            display: none;
             pointer-events: none;
         `;
         overlay.innerText = "Dubbing Ready";
 
-        // Try appending to video container first, else body
         const container = document.querySelector('#movie_player') || document.body;
         container.appendChild(overlay);
         this.overlay = overlay;
@@ -84,10 +111,16 @@ class DubbingManager {
 
     async startProcess() {
         console.log("Starting dubbing process...");
-        this.updateOverlay("Initializing Engine...", "#FF9500");
+        this.isDubbing = true;
+        this.updateOverlay("Initializing...", "#FF9500");
         this.video.pause();
 
-        // Get Video ID from URL
+        // Apply mute setting IMMEDIATELY
+        if (this.muteOriginal) {
+            this.video.muted = true;
+            console.log("Original audio muted = true");
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const videoId = urlParams.get('v');
 
@@ -96,27 +129,26 @@ class DubbingManager {
             return;
         }
 
-        // Step 2: Fetch Subtitles from Backend
-        this.updateOverlay("Fetching Subtitles...");
+        this.updateOverlay(`Fetching (${this.translateSource})...`);
         this.subtitles = await this.fetchSubtitles(videoId);
 
         if (!this.subtitles || this.subtitles.length === 0) {
-            alert("No subtitles found (Backend returned empty)!");
+            alert("No subtitles found!");
+            this.isDubbing = false;
             return;
         }
 
-        console.log(`Loaded ${this.subtitles.length} subtitle lines via Server.`);
+        console.log(`Loaded ${this.subtitles.length} subtitles (source: ${this.translateSource})`);
+        const voiceName = this.selectedVoice === 'female' ? 'Hoài My' : 'Nam Minh';
+        this.updateOverlay(`Voice: ${voiceName}`, "#FF9500");
 
-        // Step 3: Initial Batch Processing
         await this.bufferUntilSafe(0);
-
-        // Step 5: Play Video triggers automatically when buffer is sufficient
     }
 
     async fetchSubtitles(videoId) {
-        console.log(`Fetching subtitles for ${videoId} from server...`);
+        console.log(`Fetching subtitles: video=${videoId}, source=${this.translateSource}`);
         try {
-            const resp = await fetch(`${this.SERVER_URL_BASE}/subtitles?video_id=${videoId}&lang=vi`);
+            const resp = await fetch(`${this.SERVER_URL_BASE}/subtitles?video_id=${videoId}&lang=vi&translate_source=${this.translateSource}`);
             if (!resp.ok) {
                 throw new Error("Server error: " + resp.statusText);
             }
@@ -141,8 +173,6 @@ class DubbingManager {
 
         while (durationBuffered < this.BUFFER_THRESHOLD_SEC && i < this.subtitles.length) {
             const sub = this.subtitles[i];
-            // Format check: server returns {start, end, text}
-            // We ensure we send start_time/end_time
             if (!this.processedIds.has(i)) {
                 batch.push({
                     id: i.toString(),
@@ -164,6 +194,7 @@ class DubbingManager {
 
         if (this.video.paused && this.video.readyState >= 3 && this.audioQueue.length > 0) {
             console.log("Buffer sufficient. Playing video.");
+            this.updateOverlay("Playing...", "#34C759");
             this.video.play();
         }
     }
@@ -173,7 +204,10 @@ class DubbingManager {
             const resp = await fetch(`${this.SERVER_URL_BASE}/synthesize`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ subtitles: batch })
+                body: JSON.stringify({
+                    subtitles: batch,
+                    voice: this.selectedVoice
+                })
             });
             const data = await resp.json();
 
@@ -222,7 +256,6 @@ class DubbingManager {
             }
         }
 
-        // Background Fetch Logic
         const lastProcessedIndex = this.nextFetchIndex - 1;
         if (lastProcessedIndex >= 0 && lastProcessedIndex < this.subtitles.length) {
             const lastProcessedEndTime = this.subtitles[lastProcessedIndex].end;
@@ -236,43 +269,35 @@ class DubbingManager {
     }
 
     async playAudio(audioData) {
-        // Critical Section: Prevent Overlap
         if (this.currentAudioPlayer && !this.currentAudioPlayer.paused && !this.currentAudioPlayer.ended) {
-            console.log("Audio overlap detected. Pausing video to wait for current audio to finish.");
+            console.log("Audio overlap detected. Pausing video.");
             this.updateOverlay("Syncing Audio...", "#FF3B30");
             this.video.pause();
 
-            // Wait for current audio to end
             await new Promise(resolve => {
                 this.currentAudioPlayer.onended = resolve;
-                // Backup safety timeout
                 setTimeout(resolve, (this.currentAudioPlayer.duration - this.currentAudioPlayer.currentTime + 0.5) * 1000);
             });
-            console.log("Previous audio finished. Resuming flow.");
+            console.log("Previous audio finished. Resuming.");
         }
 
         const audio = new Audio(audioData.url);
+        audio.volume = Math.min(this.volume, 1.0);
         this.currentAudioPlayer = audio;
-
-        // When this new audio finishes, if we paused the video, we should resume it?
-        // Actually, logic is: Video drives playback. 
-        // If we paused video, we must resume it now that we are playing the next chunk.
-        // UNLESS the next chunk is also starting "late" relative to video?
-        // Let's just play audio and Ensure video is playing.
 
         await audio.play().catch(e => console.error("Audio play error", e));
 
         if (this.video.paused) {
             console.log("Resuming video sync...");
             this.video.play();
-            this.updateOverlay("Synced Playing", "#34C759");
+            this.updateOverlay("Playing", "#34C759");
         }
     }
 
     onSeek() {
         console.log("User seeked. Resetting...");
         this.video.pause();
-        this.audioQueue = []; // Clear current queue
+        this.audioQueue = [];
 
         if (this.currentAudioPlayer) {
             this.currentAudioPlayer.pause();
@@ -283,25 +308,11 @@ class DubbingManager {
 
         if (newIndex === -1) {
             if (currentTime < (this.subtitles[0]?.start || 0)) newIndex = 0;
-            else return; // End of video
+            else return;
         }
 
         this.nextFetchIndex = newIndex;
-        // We should allow re-fetching even if processedIds has it?
-        // Simpler: Just re-buffer. The check !processedIds.has(i) prevents re-fetch.
-        // If we want to support seeking BACK, we must clear processedIds for future segments?
-        // Yes, let's clear processedIds which act as a "in-session cache".
-        // BUT, ideally we cache audio for performance. 
-        // For now, let's just clear processedIds for items *after* newIndex to be safe.
-        // Or simpler: just clear set? 
-        // Clearing set forces re-synthesize. Expensive but Safe.
-        // Let's iterate and remove only those > newIndex? No, Set order is insertion order usually but indices are reliable.
-
-        // Strategy: Clear processedIds for everything >= newIndex.
-        // Or simplified: Clear all processedIds and let server cache or browser cache?
-        // Let's clear `processedIds` to force re-fetch for simplicity in this prototype.
         this.processedIds.clear();
-        // Wait, if we clear all, we re-synthesize 0 to batch? No, we start from newIndex.
 
         this.bufferUntilSafe(newIndex);
     }

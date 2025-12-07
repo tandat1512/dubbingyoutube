@@ -23,3 +23,7 @@ Thumbs.db
 
 # Gemini artifacts (local only)
 .gemini/
+
+# Environment files (keep .env.example)
+.env
+!.env.example
