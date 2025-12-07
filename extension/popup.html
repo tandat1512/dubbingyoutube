@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dubbing Pro Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo-area">
+                <div class="icon-pulse">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 18.75C12 18.75 13.5 16.5 16.5 16.5C19.5 16.5 19.5 18.75 19.5 18.75" stroke="white"
+                            stroke-width="2" stroke-linecap="round" />
+                        <path d="M4.5 9C4.5 9 6.75 6.75 12 6.75C17.25 6.75 19.5 9 19.5 9" stroke="white"
+                            stroke-width="2" stroke-linecap="round" />
+                        <path d="M2 15C2 15 5 12 12 12C19 12 22 15 22 15" stroke="white" stroke-width="2"
+                            stroke-linecap="round" />
+                    </svg>
+                </div>
+                <h1>AI Dubbing Pro</h1>
+            </div>
+            <div class="status-indicator">
+                <span class="dot" id="server-dot"></span>
+                <span class="status-text" id="server-status">Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Main Card -->
+        <main>
+            <div class="card glass">
+                <div class="info-row">
+                    <span class="label">Target Voice</span>
+                    <span class="value">Hoai My (AI)</span>
+                </div>
+
+                <div class="control-area">
+                    <button id="btn-dub" class="glow-button">
+                        <span class="btn-text">START DUBBING</span>
+                        <div class="btn-shine"></div>
+                    </button>
+                    <p class="hint-text">Auto-syncs with video</p>
+                </div>
+            </div>
+
+            <div class="settings-card glass">
+                <div class="setting-item">
+                    <label>Volume Boost</label>
+                    <input type="range" min="0" max="200" value="100" class="slider">
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by Edge-TTS & Deep Translator</p>
+        </footer>
+    </div>
+    <script src="popup.js"></script>
+</body>
+
+</html>

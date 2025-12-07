@@ -1,0 +1,6 @@
+@echo off
+echo Installing dependencies...
+pip install -r server/requirements.txt
+echo Starting TTS Server...
+python server/server.py
+pause
