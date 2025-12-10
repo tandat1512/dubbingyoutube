@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 1. Check Server Connection
     try {
-        const resp = await fetch('http://localhost:8000/health');
+        const resp = await fetch('https://dubbingyoutube.onrender.com/health');
         if (resp.ok) {
             const data = await resp.json();
             serverDot.classList.add('connected');

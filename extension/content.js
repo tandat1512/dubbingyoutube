@@ -7,7 +7,7 @@ class DubbingManager {
         this.isBuffering = false;
         this.currentAudioPlayer = null;
         this.processedIds = new Set();
-        this.SERVER_URL_BASE = "http://localhost:8000";
+        this.SERVER_URL_BASE = "https://dubbingyoutube.onrender.com";
         this.BUFFER_THRESHOLD_SEC = 30;
         this.MIN_BUFFER_SEC = 15;
         this.nextFetchIndex = 0;

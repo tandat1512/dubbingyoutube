@@ -7,7 +7,7 @@
         "activeTab"
     ],
     "host_permissions": [
-        "http://localhost:8000/*"
+        "https://dubbingyoutube.onrender.com*"
     ],
     "content_scripts": [
         {
