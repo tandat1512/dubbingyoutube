@@ -1,8 +1,10 @@
 fastapi
-uvicorn
+uvicorn[standard]
 edge-tts
 requests
 youtube-transcript-api
 deep-translator
 google-generativeai
 python-dotenv
+pydantic
+aiofiles
