@@ -2,6 +2,6 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "cd server && python server.py"
+startCommand = "python server/server.py"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
