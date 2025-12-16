@@ -250,6 +250,43 @@ input:checked+.slider-toggle:before {
     margin-top: 8px;
 }
 
+/* Audio Balance Slider */
+.balance-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.balance-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    min-width: 30px;
+}
+
+.balance-slider {
+    flex: 1;
+    background: linear-gradient(90deg, #FF9500, #FF3B30) !important;
+}
+
+.balance-display {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+.balance-display span {
+    color: white;
+    font-weight: 600;
+}
+
+.setting-item:has(.balance-container) {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
 /* Slider */
 .slider {
     -webkit-appearance: none;

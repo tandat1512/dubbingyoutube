@@ -99,10 +99,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Available Vietnamese voices
+# Available TTS voices by language
 AVAILABLE_VOICES = {
+    # Vietnamese voices
     "female": "vi-VN-HoaiMyNeural",
-    "male": "vi-VN-NamMinhNeural"
+    "male": "vi-VN-NamMinhNeural",
+    # English voices
+    "en-female": "en-US-JennyNeural",
+    "en-male": "en-US-GuyNeural"
 }
 
 class SubtitleItem(BaseModel):
@@ -114,6 +118,7 @@ class SubtitleItem(BaseModel):
 class TTSRequest(BaseModel):
     subtitles: List[SubtitleItem]
     voice: Optional[str] = "female"
+    target_language: Optional[str] = "vi"
 
 class AudioResponseItem(BaseModel):
     id: str
@@ -257,6 +262,115 @@ KẾT QUẢ BIÊN TẬP ({len(merged_subtitles)} dòng):"""
             
     except Exception as e:
         logger.error(f"Deep translate error: {e}")
+        return None
+
+
+async def deep_translate_to_english(subtitles: list) -> list:
+    """
+    Deep Translate to English: Use Gemini to translate and restructure sentences
+    for natural English TTS output.
+    """
+    if not GEMINI_AVAILABLE or not gemini_model:
+        return None
+    
+    try:
+        # 1. Smart merge first
+        merged_subtitles = smart_merge_subtitles(subtitles)
+        logger.info(f"📊 Smart merge: {len(subtitles)} → {len(merged_subtitles)} segments")
+        
+        # DEBUG: Show merged segments
+        logger.info("=" * 60)
+        logger.info("📝 MERGED SEGMENTS (Before English Translation):")
+        for idx, sub in enumerate(merged_subtitles[:10]):
+            logger.info(f"  [{idx}] [{sub['start']:.1f}s-{sub.get('end', 0):.1f}s] {sub['text'][:80]}...")
+        if len(merged_subtitles) > 10:
+            logger.info(f"  ... and {len(merged_subtitles) - 10} more segments")
+        logger.info("=" * 60)
+        
+        # 2. Build input text with timestamps
+        combined_text = ""
+        for i, sub in enumerate(merged_subtitles):
+            combined_text += f"[{sub['start']:.1f}s] {sub['text']}\n"
+        
+        # 3. English optimization prompt
+        prompt = f"""You are a Professional Dubbing Editor specializing in AI Voice synthesis.
+
+TASK:
+Translate the following subtitles to natural, fluent English for TTS (Text-to-Speech) dubbing.
+The source may be in any language. Your job is to create clean, natural English sentences.
+
+STRICT RULES:
+1. Input has {len(merged_subtitles)} lines -> Output MUST have EXACTLY {len(merged_subtitles)} lines.
+2. Keep the [TIMESTAMP] at the beginning of each line exactly as-is.
+3. No explanations, no markdown, only return the translated text.
+
+NATURAL ENGLISH GUIDELINES:
+- Use conversational, natural English suitable for voice narration
+- Avoid awkward sentence breaks - ensure each line is a complete thought
+- Use contractions where appropriate (I'm, you're, it's, etc.)
+- Keep sentences concise and clear for TTS
+
+INPUT DATA:
+{combined_text}
+
+ENGLISH TRANSLATION ({len(merged_subtitles)} lines):"""
+
+        # 4. Call Gemini
+        response = gemini_model.generate_content(prompt)
+        result_text = response.text.strip()
+        
+        # 5. Parse results
+        new_subtitles = []
+        lines = result_text.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            if not line or not line.startswith('['):
+                continue
+            
+            try:
+                bracket_end = line.index(']')
+                timestamp_str = line[1:bracket_end].replace('s', '').strip()
+                text = line[bracket_end+1:].strip()
+                text = text.replace('"', '').replace('*', '').strip()
+                
+                if text:
+                    start = float(timestamp_str)
+                    new_subtitles.append({
+                        "start": start,
+                        "text": text
+                    })
+            except Exception as parse_error:
+                logger.warning(f"⚠️ Parse error: {line} -> {parse_error}")
+                continue
+        
+        # Safety check
+        if len(new_subtitles) < len(merged_subtitles) * 0.8:
+            logger.warning(f"⚠️ Warning: Gemini returned fewer lines ({len(new_subtitles)}/{len(merged_subtitles)}).")
+        
+        # 6. Calculate end times
+        for i, sub in enumerate(new_subtitles):
+            if i < len(new_subtitles) - 1:
+                sub['end'] = new_subtitles[i+1]['start']
+            else:
+                original_end = merged_subtitles[-1].get('end', sub['start'] + 3.0)
+                sub['end'] = original_end
+        
+        logger.info(f"✅ Deep English Translate complete: {len(new_subtitles)} lines.")
+        
+        # DEBUG log
+        logger.info("=" * 60)
+        logger.info("🇺🇸 ENGLISH TRANSLATED SEGMENTS:")
+        for idx, sub in enumerate(new_subtitles[:10]):
+            logger.info(f"  [{idx}] [{sub['start']:.1f}s-{sub.get('end', 0):.1f}s] {sub['text'][:80]}...")
+        if len(new_subtitles) > 10:
+            logger.info(f"  ... and {len(new_subtitles) - 10} more segments")
+        logger.info("=" * 60)
+        
+        return new_subtitles
+            
+    except Exception as e:
+        logger.error(f"Deep English translate error: {e}")
         return None
 
 
@@ -405,6 +519,41 @@ Lines to translate:
         return None
 
 
+async def translate_with_gemini_to_english(texts: List[str]) -> List[str]:
+    """Simple Gemini translation to English (1:1 mapping)"""
+    if not GEMINI_AVAILABLE or not gemini_model:
+        return None
+    
+    try:
+        prompt = f"""Translate the following subtitle lines to natural English. 
+Keep the translations conversational, suitable for voice dubbing.
+Maintain the same number of lines. Only output the translations, one per line.
+
+Lines to translate:
+{chr(10).join(texts)}
+
+English translations:"""
+        
+        response = gemini_model.generate_content(prompt)
+        result_text = response.text.strip()
+        
+        # Parse
+        translated = []
+        for line in result_text.split('\n'):
+            clean = line.strip()
+            if clean and not clean.startswith('-') and not clean.startswith('*'):
+                translated.append(clean)
+        
+        if len(translated) >= len(texts):
+            logger.info(f"✅ Gemini English translation: {len(texts)} lines")
+            return translated[:len(texts)]
+        return None
+            
+    except Exception as e:
+        logger.error(f"Gemini English translation error: {e}")
+        return None
+
+
 def translate_with_google(texts: List[str]) -> List[str]:
     """Fallback translation using Google Translate with optimized batching"""
     import concurrent.futures
@@ -446,6 +595,47 @@ def translate_with_google(texts: List[str]) -> List[str]:
     return translated_texts
 
 
+def translate_to_english(texts: List[str]) -> List[str]:
+    """Translate any language to English using Google Translate"""
+    import concurrent.futures
+    
+    total = len(texts)
+    logger.info(f"🇺🇸 Translating {total} segments to English...")
+    
+    translated_texts = [None] * total
+    chunk_size = 100
+    
+    def translate_chunk(chunk_data):
+        start_idx, chunk = chunk_data
+        try:
+            translator = GoogleTranslator(source='auto', target='en')
+            result = translator.translate_batch(chunk)
+            return start_idx, result
+        except Exception as e:
+            logger.error(f"English translation error: {e}")
+            return start_idx, chunk  # Return original on error
+    
+    # Create chunks with their starting indices
+    chunks = []
+    for i in range(0, total, chunk_size):
+        chunk = texts[i:i+chunk_size]
+        chunks.append((i, chunk))
+    
+    # Process chunks in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(translate_chunk, chunk_data) for chunk_data in chunks]
+        
+        completed = 0
+        for future in concurrent.futures.as_completed(futures):
+            start_idx, result = future.result()
+            for j, text in enumerate(result):
+                translated_texts[start_idx + j] = text
+            completed += len(result)
+            logger.info(f"🇺🇸 Progress: {completed}/{total} segments translated to English")
+    
+    return translated_texts
+
+
 def fetch_subtitles_with_api(video_id: str):
     """Fetch subtitles using youtube-transcript-api"""
     yt = YouTubeTranscriptApi()
@@ -461,16 +651,22 @@ def fetch_subtitles_with_scraper(video_id: str):
 
 
 @app.get("/subtitles")
-async def get_subtitles(video_id: str, lang: str = "vi", translate_source: str = "youtube"):
+async def get_subtitles(video_id: str, target_lang: str = "vi", translate_source: str = "youtube"):
     """
+    Get subtitles for dubbing.
+    
+    target_lang options:
+    - vi: Vietnamese (will translate from English)
+    - en: English (no translation needed if source is English)
+    
     translate_source options:
-    - youtube: Use YouTube's Vietnamese subs directly
+    - youtube: Use YouTube's subs (with smart merge + translation if needed)
     - gemini: Translate with Gemini AI (1:1 mapping)
-    - deep: Deep Translate - merge segments for natural flow
+    - deep: Deep Translate - merge segments for natural flow (Gemini)
     - google: Force Google Translate
     """
     try:
-        logger.info(f"📥 Fetching subs for {video_id} | Source: {translate_source}")
+        logger.info(f"📥 Fetching subs for {video_id} | Target: {target_lang} | Source: {translate_source}")
         
         result = []
         source_lang = "unknown"
@@ -533,14 +729,65 @@ async def get_subtitles(video_id: str, lang: str = "vi", translate_source: str =
         
         # Handle translation based on source
         if translate_source == "deep":
-            logger.info("🔄 Deep Translating with Gemini...")
-            deep_result = await deep_translate_with_gemini(result)
-            if deep_result:
-                return deep_result
+            if target_lang == "en":
+                # Deep translate TO ENGLISH
+                logger.info("🇺🇸 Deep Translating to English with Gemini...")
+                deep_result = await deep_translate_to_english(result)
+                if deep_result:
+                    return deep_result
+                else:
+                    logger.warning("⚠️ Deep English translate failed, using Google...")
+                    merged = smart_merge_subtitles(result)
+                    texts = [item['text'] for item in merged]
+                    translated = translate_to_english(texts)
+                    for i, t in enumerate(translated):
+                        merged[i]['text'] = t
+                    return merged
             else:
-                logger.warning("⚠️ Deep translate failed, using normal Gemini...")
-                translate_source = "gemini"
+                # Deep translate to Vietnamese (original)
+                logger.info("🔄 Deep Translating with Gemini...")
+                deep_result = await deep_translate_with_gemini(result)
+                if deep_result:
+                    return deep_result
+                else:
+                    logger.warning("⚠️ Deep translate failed, using normal Gemini...")
+                    translate_source = "gemini"
         
+        # If target is English (for non-deep sources)
+        if target_lang == "en":
+            merged = smart_merge_subtitles(result)
+            logger.info(f"📊 Smart merge: {len(result)} → {len(merged)} segments")
+            
+            # Check if source is already English - no translation needed
+            if source_lang.startswith('en'):
+                logger.info("🇺🇸 Target: English | Source: English - No translation needed")
+                return merged
+            else:
+                # Source is not English, translate to English based on translate_source
+                if translate_source == "gemini":
+                    logger.info(f"🇺🇸 Translating to English with Gemini AI...")
+                    texts = [item['text'] for item in merged]
+                    translated = await translate_with_gemini_to_english(texts)
+                    if translated:
+                        for i, t in enumerate(translated):
+                            merged[i]['text'] = t
+                    else:
+                        # Fallback to Google
+                        translated = translate_to_english(texts)
+                        for i, t in enumerate(translated):
+                            merged[i]['text'] = t
+                else:
+                    # youtube or google source - use Google translate
+                    logger.info(f"🇺🇸 Target: English | Source: {source_lang} - Translating with Google...")
+                    texts = [item['text'] for item in merged]
+                    translated = translate_to_english(texts)
+                    for i, t in enumerate(translated):
+                        merged[i]['text'] = t
+                
+                logger.info("✅ English translation complete!")
+                return merged
+        
+        # Vietnamese target - apply translation
         if translate_source == "gemini":
             logger.info("🤖 Translating with Gemini AI...")
             texts = [item['text'] for item in result]
@@ -554,6 +801,19 @@ async def get_subtitles(video_id: str, lang: str = "vi", translate_source: str =
                 translated = translate_with_google(texts)
                 for i, t in enumerate(translated):
                     result[i]['text'] = t
+        
+        elif translate_source == "youtube":
+            # YouTube source: Apply smart merge + Google translate
+            logger.info("🎬 YouTube source: Applying smart merge + Google translation...")
+            merged = smart_merge_subtitles(result)
+            logger.info(f"📊 Smart merge: {len(result)} → {len(merged)} segments")
+            
+            texts = [item['text'] for item in merged]
+            translated = translate_with_google(texts)
+            for i, t in enumerate(translated):
+                merged[i]['text'] = t
+            logger.info("✅ YouTube translation complete!")
+            return merged
         
         elif translate_source == "google" or use_translation:
             logger.info("📝 Translating with Google Translate...")
@@ -575,10 +835,25 @@ async def get_subtitles(video_id: str, lang: str = "vi", translate_source: str =
 
 @app.post("/synthesize")
 async def synthesize_batch(request: TTSRequest):
-    voice_id = AVAILABLE_VOICES.get(request.voice, AVAILABLE_VOICES["female"])
+    # Select voice based on language and preference
+    voice_key = request.voice
+    if request.target_language == "en":
+        # Use English voice
+        if voice_key in ["female", "en-female"]:
+            voice_key = "en-female"
+        else:
+            voice_key = "en-male"
+    else:
+        # Use Vietnamese voice (default)
+        if voice_key in ["male", "en-male"]:
+            voice_key = "male"
+        else:
+            voice_key = "female"
+    
+    voice_id = AVAILABLE_VOICES.get(voice_key, AVAILABLE_VOICES["female"])
     tts_engine = EdgeTTSEngine(voice=voice_id)
     
-    logger.info(f"🎤 Synthesizing {len(request.subtitles)} items | Voice: {voice_id}")
+    logger.info(f"🎤 Synthesizing {len(request.subtitles)} items | Voice: {voice_id} | Lang: {request.target_language}")
     
     async def process_item(item):
         try:

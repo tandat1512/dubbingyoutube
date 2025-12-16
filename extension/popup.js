@@ -4,32 +4,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     const serverStatus = document.getElementById('server-status');
     const btnText = btnDub.querySelector('.btn-text');
     const voiceSelect = document.getElementById('voice-select');
+    const languageSelect = document.getElementById('language-select');
     const translateSelect = document.getElementById('translate-select');
-    const muteToggle = document.getElementById('mute-toggle');
+    const balanceSlider = document.getElementById('balance-slider');
+    const balanceOriginal = document.getElementById('balance-original');
+    const balanceDub = document.getElementById('balance-dub');
     const volumeSlider = document.getElementById('volume-slider');
 
     // Load saved settings from localStorage
     const savedSettings = JSON.parse(localStorage.getItem('dubbingSettings') || '{}');
     if (savedSettings.voice) voiceSelect.value = savedSettings.voice;
+    if (savedSettings.language) languageSelect.value = savedSettings.language;
     if (savedSettings.translate) translateSelect.value = savedSettings.translate;
-    if (savedSettings.mute !== undefined) muteToggle.checked = savedSettings.mute;
+    if (savedSettings.balance !== undefined) balanceSlider.value = savedSettings.balance;
     if (savedSettings.volume) volumeSlider.value = savedSettings.volume;
+
+    // Update balance display
+    updateBalanceDisplay();
 
     // Save settings function
     function saveSettings() {
         const settings = {
             voice: voiceSelect.value,
+            language: languageSelect.value,
             translate: translateSelect.value,
-            mute: muteToggle.checked,
+            balance: balanceSlider.value,
             volume: volumeSlider.value
         };
         localStorage.setItem('dubbingSettings', JSON.stringify(settings));
     }
 
+    function updateBalanceDisplay() {
+        const val = parseInt(balanceSlider.value);
+        balanceOriginal.textContent = val + '%';
+        balanceDub.textContent = (100 - val) + '%';
+    }
+
     // Save on any change
     voiceSelect.addEventListener('change', saveSettings);
+    languageSelect.addEventListener('change', saveSettings);
     translateSelect.addEventListener('change', saveSettings);
-    muteToggle.addEventListener('change', saveSettings);
+    balanceSlider.addEventListener('input', () => {
+        updateBalanceDisplay();
+        saveSettings();
+    });
     volumeSlider.addEventListener('input', saveSettings);
 
     // 1. Check Server Connection
@@ -38,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (resp.ok) {
             const data = await resp.json();
             serverDot.classList.add('connected');
-            serverStatus.textContent = data.gemini ? "Online (Gemini)" : "Online";
+            serverStatus.textContent = data.gemini ? "Online" : "Online";
         } else {
             serverStatus.textContent = "Error";
         }
@@ -54,12 +72,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnDub.classList.add('active');
             btnText.textContent = "DUBBING STARTED";
 
+            const balanceVal = parseInt(balanceSlider.value);
             chrome.tabs.sendMessage(tabs[0].id, {
                 action: "start_dubbing",
                 voice: voiceSelect.value,
+                targetLanguage: languageSelect.value,
                 translateSource: translateSelect.value,
-                muteOriginal: muteToggle.checked,
-                volume: volumeSlider.value / 100
+                originalVolume: balanceVal / 100,  // 0-1 for original video
+                dubVolume: volumeSlider.value / 100  // 0-2 for dub audio
             });
 
             setTimeout(() => {
@@ -75,20 +95,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
             if (tabs[0]?.id) {
                 chrome.tabs.sendMessage(tabs[0].id, {
-                    action: "update_volume",
+                    action: "update_dub_volume",
                     volume: value
                 });
             }
         });
     });
 
-    // 4. Handle Mute Toggle Change (real-time)
-    muteToggle.addEventListener('change', (e) => {
+    // 4. Handle Balance Change (real-time)
+    balanceSlider.addEventListener('input', (e) => {
+        const value = e.target.value / 100;
         chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
             if (tabs[0]?.id) {
                 chrome.tabs.sendMessage(tabs[0].id, {
-                    action: "toggle_mute",
-                    mute: e.target.checked
+                    action: "update_balance",
+                    originalVolume: value
                 });
             }
         });

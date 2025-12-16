@@ -24,7 +24,7 @@
                             stroke-linecap="round" />
                     </svg>
                 </div>
-                <h1>AI Dubbing Pro</h1>
+                <h1>Mario Dubbing Pro</h1>
             </div>
             <div class="status-indicator">
                 <span class="dot" id="server-dot"></span>
@@ -41,6 +41,17 @@
                     <select id="voice-select" class="select-input">
                         <option value="female">Hoài My (Nữ)</option>
                         <option value="male">Nam Minh (Nam)</option>
+                        <option value="en-female">Jenny (EN Female)</option>
+                        <option value="en-male">Guy (EN Male)</option>
+                    </select>
+                </div>
+
+                <!-- Target Language -->
+                <div class="setting-item">
+                    <label>🌍 Ngôn ngữ đọc</label>
+                    <select id="language-select" class="select-input">
+                        <option value="vi">Tiếng Việt 🇻🇳</option>
+                        <option value="en">English 🇺🇸</option>
                     </select>
                 </div>
 
@@ -54,15 +65,6 @@
                     </select>
                 </div>
 
-                <!-- Mute Toggle -->
-                <div class="setting-item toggle-row">
-                    <label>🔇 Tắt tiếng video gốc</label>
-                    <label class="switch">
-                        <input type="checkbox" id="mute-toggle" checked>
-                        <span class="slider-toggle round"></span>
-                    </label>
-                </div>
-
                 <div class="control-area">
                     <button id="btn-dub" class="glow-button">
                         <span class="btn-text">START DUBBING</span>
@@ -72,16 +74,30 @@
                 </div>
             </div>
 
+            <!-- Audio Mixer Card -->
             <div class="settings-card glass">
                 <div class="setting-item">
-                    <label>🔊 Volume Boost</label>
+                    <label>🎚️ Audio Balance</label>
+                    <div class="balance-container">
+                        <span class="balance-label">Gốc</span>
+                        <input type="range" min="0" max="100" value="20" class="slider balance-slider"
+                            id="balance-slider">
+                        <span class="balance-label">Dub</span>
+                    </div>
+                    <div class="balance-display">
+                        <span id="balance-original">20%</span> Gốc / <span id="balance-dub">80%</span> Dub
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label>🔊 Dub Volume</label>
                     <input type="range" min="0" max="200" value="100" class="slider" id="volume-slider">
                 </div>
             </div>
         </main>
 
         <footer>
-            <p>Powered by Edge-TTS & Gemini AI</p>
+            <p>Powered by MarioAI</p>
         </footer>
     </div>
     <script src="popup.js"></script>
