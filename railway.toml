@@ -1,7 +1,0 @@
-[build]
-builder = "NIXPACKS"
-
-[deploy]
-startCommand = "python server/server.py"
-healthcheckPath = "/health"
-healthcheckTimeout = 300

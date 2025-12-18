@@ -1,0 +1,60 @@
+==========================================================================
+              HƯỚNG DẪN CÀI ĐẶT VÀ SỬ DỤNG - YOUTUBE DUBBING
+==========================================================================
+
+Mô tả: Tiện ích mở rộng Chrome và Server Python giúp lồng tiếng Tiếng Việt
+trực tiếp cho video YouTube bằng AI (Edge TTS).
+
+I. YÊU CẦU HỆ THỐNG (Cho máy mới)
+---------------------------------
+1. Python 3.9 trở lên: https://www.python.org/downloads/
+2. FFmpeg (Để xử lý âm thanh - Rất quan trọng):
+   - Tải về: https://ffmpeg.org/download.html
+   - Hướng dẫn nhanh: Tải bản Windows build, giải nén và thêm thư mục 'bin' vào PATH của hệ thống.
+3. Trình duyệt Google Chrome (hoặc trình duyệt nhân Chromium như Edge, Brave).
+
+II. CÀI ĐẶT
+-----------
+Bước 1: Cài đặt thư viện Python (Server)
+   1. Mở Terminal (PowerShell hoặc CMD) trong thư mục dự án:
+      cd x:\dubbing\server
+   2. Cài đặt các thư viện cần thiết:
+      pip install -r requirements.txt
+   3. Cập nhật thư viện Edge TTS (để tránh lỗi 403):
+      pip install --upgrade edge-tts
+
+Bước 2: Cài đặt Chrome Extension
+   1. Mở Chrome, truy cập: chrome://extensions/
+   2. Bật "Developer mode" (Chế độ nhà phát triển) ở góc trên bên phải.
+   3. Nhấn "Load unpacked" (Tải tiện ích đã giải nén).
+   4. Chọn thư mục: x:\dubbing\extension
+
+III. SỬ DỤNG
+------------
+Bước 1: Chạy Server
+   1. Mở Terminal trong thư mục: x:\dubbing\server
+   2. Chạy lệnh:
+      python server.py
+   3. Đảm bảo Terminal hiện: "Uvicorn running on http://0.0.0.0:8000"
+
+Bước 2: Sử dụng trên YouTube
+   1. Mở video YouTube bất kỳ.
+   2. Nhấn vào biểu tượng micro 🎙️ màu tím (Floating Ball) ở góc dưới bên phải HOẶC mờ Popup Extension trên thanh công cụ.
+   3. Nhấn "Start Dubbing".
+   4. Chờ vài giây để server tải và dịch 30 giây đầu tiên, video sẽ tự động phát kèm giọng lồng tiếng Việt.
+
+IV. CÁC TÙY CHỈNH (Trong Popup)
+------------------------------
+- Voice: Chọn giọng Hoài My (Nữ) hoặc Nam Minh (Nam).
+- Translation Service: Chọn Google (mặc định) hoặc Deep (dịch theo ngữ cảnh).
+- Original/Translated Volume: Chỉnh âm lượng của video gốc và giọng lồng tiếng.
+- Mute Original: Tắt hẳn âm thanh gốc để chỉ nghe lồng tiếng.
+
+V. LỖI THƯỜNG GẶP
+-----------------
+- Lỗi "name 'base64' is not defined": Do server chưa được cập nhật code mới, hãy liên hệ DEV.
+- Lỗi "ffmpeg not found": Kiểm tra xem FFmpeg đã được cài đặt và thêm vào PATH chưa.
+- Không nghe thấy tiếng Việt: Đảm bảo server đang chạy và không báo lỗi 403.
+
+==========================================================================
+Chúc bạn có trải nghiệm xem YouTube lồng tiếng vui vẻ!
